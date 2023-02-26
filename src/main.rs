@@ -1,3 +1,5 @@
+//! Nostr relay benchmarker
+
 use clap::Parser;
 #[macro_use]
 extern crate clap;
@@ -5,9 +7,8 @@ extern crate clap;
 mod connect;
 mod runtime;
 
-/// Nostr relay benchmarker
-
-#[derive(Debug, Parser)] // requires `derive` feature
+/// Cli
+#[derive(Debug, Parser)]
 #[command(
     name = "nostr-bench",
     about = "Nostr relay benchmarking tool.",
@@ -18,6 +19,7 @@ struct Cli {
     command: Commands,
 }
 
+/// Commands
 #[derive(Debug, Subcommand)]
 enum Commands {
     /// Connection benchmark
