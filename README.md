@@ -15,7 +15,7 @@ Get more connections
 Since the system limits a network interface to connect up to 64k, you can set `--interface` to bind more interface to increase the number of connections
 
 ```sh
-nostr-bench connect 'ws://127.0.0.1:8080' --interface 192.168.0.2 --interface 192.168.0.3`
+nostr-bench connect 'ws://127.0.0.1:8080' --interface 192.168.0.2 --interface 192.168.0.3
 ```
 
 ###  Increase resource usage limits
