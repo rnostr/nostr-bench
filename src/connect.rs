@@ -169,7 +169,7 @@ pub async fn start(opts: ConnectOpts) {
                 add1!(result, complete);
             });
             if (i + 1) % opts.rate == 0 {
-                time::sleep(time::Duration::from_secs(1)).await;
+                time::sleep(Duration::from_secs(1)).await;
             }
         }
     });
@@ -183,7 +183,7 @@ pub async fn start(opts: ConnectOpts) {
                 break;
             }
         }
-        time::sleep(time::Duration::from_secs(2)).await;
+        time::sleep(Duration::from_secs(2)).await;
     }
 }
 
@@ -214,7 +214,7 @@ pub async fn connect(
 
     let tcp = socket.connect(connaddr).await?;
 
-    let (stream, _) = time::timeout(time::Duration::from_secs(60), client_async(url, tcp))
+    let (stream, _) = time::timeout(Duration::from_secs(60), client_async(url, tcp))
         .await
         .map_err(|_| Error::ConnectTimeout)??;
     Ok(stream)
@@ -225,7 +225,7 @@ pub async fn wait(stream: WebSocketStream<TcpStream>, keepalive: u64) -> Result<
     let (mut write, read) = stream.split();
     let stay = read.try_for_each(|_message| async { Ok(()) });
 
-    let result = time::timeout(time::Duration::from_secs(keepalive), stay)
+    let result = time::timeout(Duration::from_secs(keepalive), stay)
         .await
         .map_err(|_| Error::AliveTimeout);
 
