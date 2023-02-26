@@ -53,12 +53,12 @@ pub struct ConnectOpts {
     #[arg(short = 't', long, default_value = "1", value_name = "NUM")]
     pub threads: usize,
 
-    /// Interface address
-    #[arg(long, value_name = "IP", value_parser = parse_ifaddr)]
-    pub ifaddr: Option<SocketAddr>,
+    /// Network interface address list
+    #[arg(short = 'i', long, value_name = "IP", value_parser = parse_interface)]
+    pub interface: Option<Vec<SocketAddr>>,
 }
 
-fn parse_ifaddr(s: &str) -> Result<SocketAddr, String> {
+fn parse_interface(s: &str) -> Result<SocketAddr, String> {
     Ok(format!("{}:0", s).parse().map_err(|_| "error format")?)
 }
 
@@ -138,13 +138,20 @@ pub async fn start(opts: ConnectOpts) {
 
     let c_result = result.clone();
     tokio::spawn(async move {
+        let interfaces = opts.interface.unwrap_or_default();
+        let len = interfaces.len();
         for i in 0..opts.count {
             let url = opts.url.clone();
             let result = c_result.clone();
+            let interface = if len > 0 {
+                Some(interfaces[i % len])
+            } else {
+                None
+            };
             tokio::spawn(async move {
                 add1!(result, connect);
                 let now = time::Instant::now();
-                let res = connect(url, opts.ifaddr, connaddr).await;
+                let res = connect(url, interface, connaddr).await;
                 // println!("comp {:?}", res);
                 match res {
                     Ok(stream) => {
@@ -199,7 +206,7 @@ fn parse_wsaddr(url: &Url) -> std::io::Result<SocketAddr> {
 /// Connect websocket server
 pub async fn connect(
     url: Url,
-    ifaddr: Option<SocketAddr>,
+    interface: Option<SocketAddr>,
     connaddr: Option<SocketAddr>,
 ) -> Result<WebSocketStream<TcpStream>, Error> {
     let connaddr = match connaddr {
@@ -208,7 +215,7 @@ pub async fn connect(
     };
 
     let socket = TcpSocket::new_v4()?;
-    if let Some(addr) = ifaddr {
+    if let Some(addr) = interface {
         socket.bind(addr)?;
     }
 
