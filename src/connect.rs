@@ -1,5 +1,5 @@
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
-use std::cmp::{max, min};
+use std::cmp;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use tokio::{
@@ -90,17 +90,16 @@ impl BenchResult {
     pub fn add_connect_time(&mut self, time: Duration) {
         let last = self.connect_time;
         let total = last.0 + time;
-        let mut m = last.2;
-        if m == Duration::new(0, 0) {
-            m = time;
+        let min = if last.2.is_zero() {
+            time
         } else {
-            m = min(m, time);
-        }
+            cmp::min(last.2, time)
+        };
         self.connect_time = (
             total,
             total / self.success.try_into().unwrap(),
-            m,
-            max(time, last.2),
+            min,
+            cmp::max(time, last.2),
         )
     }
 }
