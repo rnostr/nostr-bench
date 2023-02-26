@@ -127,40 +127,43 @@ pub async fn start(opts: ConnectOpts) {
         ..Default::default()
     }));
 
-    for i in 0..opts.count {
-        let url = opts.url.clone();
-        let result = result.clone();
-        tokio::spawn(async move {
-            add1!(result, connect);
-            let now = time::Instant::now();
-            let res = connect(url, opts.ifaddr, connaddr).await;
-            // println!("comp {:?}", res);
-            match res {
-                Ok(stream) => {
-                    {
-                        let mut r = result.lock().unwrap();
-                        r.alive += 1;
-                        r.success += 1;
-                        r.add_connect_time(now.elapsed());
+    let c_result = result.clone();
+    tokio::spawn(async move {
+        for i in 0..opts.count {
+            let url = opts.url.clone();
+            let result = c_result.clone();
+            tokio::spawn(async move {
+                add1!(result, connect);
+                let now = time::Instant::now();
+                let res = connect(url, opts.ifaddr, connaddr).await;
+                // println!("comp {:?}", res);
+                match res {
+                    Ok(stream) => {
+                        {
+                            let mut r = result.lock().unwrap();
+                            r.alive += 1;
+                            r.success += 1;
+                            r.add_connect_time(now.elapsed());
+                        }
+                        let res = wait(stream, opts.keepalive).await;
+                        subtract1!(result, alive);
+                        if let Err(Error::AliveTimeout) = res {
+                            add1!(result, close);
+                        } else {
+                            add1!(result, lost);
+                        }
                     }
-                    let res = wait(stream, opts.keepalive).await;
-                    subtract1!(result, alive);
-                    if let Err(Error::AliveTimeout) = res {
-                        add1!(result, close);
-                    } else {
-                        add1!(result, lost);
+                    Err(_) => {
+                        add1!(result, error);
                     }
                 }
-                Err(_) => {
-                    add1!(result, error);
-                }
+                add1!(result, complete);
+            });
+            if (i + 1) % opts.rate == 0 {
+                time::sleep(time::Duration::from_secs(1)).await;
             }
-            add1!(result, complete);
-        });
-        if (i + 1) % opts.rate == 0 {
-            time::sleep(time::Duration::from_secs(1)).await;
         }
-    }
+    });
 
     let now = time::Instant::now();
     loop {
