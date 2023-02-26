@@ -62,6 +62,15 @@ fn parse_ifaddr(s: &str) -> Result<SocketAddr, String> {
     Ok(format!("{}:0", s).parse().map_err(|_| "error format")?)
 }
 
+/// Bech time result
+#[derive(Default, Debug, Copy, Clone)]
+pub struct BenchTime {
+    pub total: Duration,
+    pub avg: Duration,
+    pub min: Duration,
+    pub max: Duration,
+}
+
 /// Bench result
 
 #[derive(Default, Debug, Copy, Clone)]
@@ -82,25 +91,25 @@ pub struct BenchResult {
     pub lost: usize,
     /// num of closed when alive timeout
     pub close: usize,
-    /// success connect times(total, avg, min, max)
-    pub connect_time: (Duration, Duration, Duration, Duration),
+    /// success connect times
+    pub connect_time: BenchTime,
 }
 
 impl BenchResult {
     pub fn add_connect_time(&mut self, time: Duration) {
         let last = self.connect_time;
-        let total = last.0 + time;
-        let min = if last.2.is_zero() {
+        let total = last.total + time;
+        let min = if last.min.is_zero() {
             time
         } else {
-            cmp::min(last.2, time)
+            cmp::min(last.min, time)
         };
-        self.connect_time = (
+        self.connect_time = BenchTime {
             total,
-            total / self.success.try_into().unwrap(),
+            avg: total / self.success.try_into().unwrap(),
             min,
-            cmp::max(time, last.2),
-        )
+            max: cmp::max(time, last.max),
+        };
     }
 }
 
