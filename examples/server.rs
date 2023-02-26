@@ -21,15 +21,23 @@ async fn main() -> Result<(), std::io::Error> {
     // Create the event loop and TCP listener we'll accept connections on.
     let try_socket = TcpListener::bind(&addr).await;
     let listener = try_socket.expect("Failed to bind");
-    info!("Listening on: {}", addr);
+    println!("Listening on: {}", addr);
 
-    while let Ok((stream, _)) = listener.accept().await {
-        tokio::spawn(async {
-            let res = accept_connection(stream).await;
-            if let Err(err) = res {
-                error!("WebSocket error: {}", err);
+    loop {
+        match listener.accept().await {
+            Ok((stream, _)) => {
+                tokio::spawn(async {
+                    let res = accept_connection(stream).await;
+                    if let Err(err) = res {
+                        error!("WebSocket error: {}", err);
+                    }
+                });
             }
-        });
+            Err(err) => {
+                error!("Tcp error: {}", err);
+                break;
+            }
+        }
     }
     Ok(())
 }
