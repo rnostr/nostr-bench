@@ -114,7 +114,7 @@ impl BenchResult {
 }
 
 macro_rules! add1 {
-    ( $name:ident, $attr:ident) => {{
+    ($name:ident, $attr:ident) => {{
         let mut r = $name.lock().unwrap();
         r.$attr += 1;
     }};
