@@ -7,3 +7,15 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "4.1.6", features = ["derive"] }
+futures-util = "0.3.26"
+thiserror = "1.0.38"
+tokio = { version = "1.25.0", features = ["rt", "rt-multi-thread", "net", "time", "macros"] }
+tokio-tungstenite = "0.18.0"
+url = "2.3.1"
+
+[dev-dependencies]
+env_logger = "0.10.0"
+log = "0.4.17"
+
+[[example]]
+name = "server"
