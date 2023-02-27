@@ -1,4 +1,4 @@
-//! A simple echo server.
+//! A simple async server.
 //!
 //! You can test this out by running:
 //!
