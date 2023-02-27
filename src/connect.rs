@@ -64,25 +64,42 @@ fn parse_interface(s: &str) -> Result<SocketAddr, String> {
 
 /// Bech time result
 #[derive(Default, Debug, Copy, Clone)]
-pub struct BenchTime {
+pub struct TimeResult {
+    pub count: usize,
     pub total: Duration,
     pub avg: Duration,
     pub min: Duration,
     pub max: Duration,
 }
 
+impl TimeResult {
+    pub fn add(self, time: Duration) -> Self {
+        let total = self.total + time;
+        let min = if self.min.is_zero() {
+            time
+        } else {
+            cmp::min(self.min, time)
+        };
+        Self {
+            count: self.count + 1,
+            total,
+            avg: total / (self.count + 1).try_into().unwrap(),
+            min,
+            max: cmp::max(time, self.max),
+        }
+    }
+}
+
 /// Bench result
 
 #[derive(Default, Debug, Copy, Clone)]
-pub struct BenchResult {
+pub struct ConnectResult {
     /// total
     pub total: usize,
     /// num of completed
     pub complete: usize,
     /// num of has connected
     pub connect: usize,
-    /// num of successed
-    pub success: usize,
     /// num of connecting
     pub alive: usize,
     /// num of connect error
@@ -92,25 +109,7 @@ pub struct BenchResult {
     /// num of closed when alive timeout
     pub close: usize,
     /// success connect times
-    pub connect_time: BenchTime,
-}
-
-impl BenchResult {
-    pub fn add_connect_time(&mut self, time: Duration) {
-        let last = self.connect_time;
-        let total = last.total + time;
-        let min = if last.min.is_zero() {
-            time
-        } else {
-            cmp::min(last.min, time)
-        };
-        self.connect_time = BenchTime {
-            total,
-            avg: total / self.success.try_into().unwrap(),
-            min,
-            max: cmp::max(time, last.max),
-        };
-    }
+    pub connect_time: TimeResult,
 }
 
 macro_rules! add1 {
@@ -131,7 +130,7 @@ macro_rules! subtract1 {
 pub async fn start(opts: ConnectOpts) {
     let connaddr = Some(parse_wsaddr(&opts.url).unwrap());
     println!("{:?}", opts);
-    let result = Arc::new(Mutex::new(BenchResult {
+    let result = Arc::new(Mutex::new(ConnectResult {
         total: opts.count,
         ..Default::default()
     }));
@@ -152,14 +151,12 @@ pub async fn start(opts: ConnectOpts) {
                 add1!(result, connect);
                 let now = time::Instant::now();
                 let res = connect(url, interface, connaddr).await;
-                // println!("comp {:?}", res);
                 match res {
                     Ok(stream) => {
                         {
                             let mut r = result.lock().unwrap();
                             r.alive += 1;
-                            r.success += 1;
-                            r.add_connect_time(now.elapsed());
+                            r.connect_time = r.connect_time.add(now.elapsed());
                         }
                         let res = wait(stream, opts.keepalive).await;
                         subtract1!(result, alive);
@@ -169,7 +166,8 @@ pub async fn start(opts: ConnectOpts) {
                             add1!(result, lost);
                         }
                     }
-                    Err(_) => {
+                    Err(_err) => {
+                        // println!("error {:?}", _err);
                         add1!(result, error);
                     }
                 }
