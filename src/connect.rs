@@ -1,7 +1,8 @@
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
+use parking_lot::Mutex;
 use std::cmp;
 use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tokio::{
     net::{TcpSocket, TcpStream},
     time,
@@ -114,14 +115,14 @@ pub struct ConnectResult {
 
 macro_rules! add1 {
     ($name:ident, $attr:ident) => {{
-        let mut r = $name.lock().unwrap();
+        let mut r = $name.lock();
         r.$attr += 1;
     }};
 }
 
 macro_rules! subtract1 {
     ( $name:ident, $attr:ident) => {{
-        let mut r = $name.lock().unwrap();
+        let mut r = $name.lock();
         r.$attr -= 1;
     }};
 }
@@ -154,7 +155,7 @@ pub async fn start(opts: ConnectOpts) {
                 match res {
                     Ok(stream) => {
                         {
-                            let mut r = result.lock().unwrap();
+                            let mut r = result.lock();
                             r.alive += 1;
                             r.connect_time = r.connect_time.add(now.elapsed());
                         }
@@ -182,7 +183,7 @@ pub async fn start(opts: ConnectOpts) {
     let now = time::Instant::now();
     loop {
         {
-            let r = result.lock().unwrap();
+            let r = result.lock();
             println!("elapsed: {}ms {:?}", now.elapsed().as_millis(), r);
             if r.complete == r.total {
                 break;
