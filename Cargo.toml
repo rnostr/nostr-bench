@@ -19,6 +19,9 @@ tokio-tungstenite = "0.18.0"
 url = "2.3.1"
 
 [dev-dependencies]
+actix = "0.13.0"
+actix-web = "4.3.1"
+actix-web-actors = "4.2.0"
 env_logger = "0.10.0"
 log = "0.4.17"
 
