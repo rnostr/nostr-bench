@@ -45,7 +45,7 @@ pub struct ConnectOpts {
     #[arg(short = 'r', long, default_value = "50", value_name = "NUM")]
     pub rate: usize,
 
-    /// Keepalive connection in second
+    /// Close connection after second, ignore when set to 0
     #[arg(short = 'k', long, default_value = "600", value_name = "NUM")]
     pub keepalive: u64,
 
