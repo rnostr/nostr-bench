@@ -230,10 +230,13 @@ pub async fn wait(stream: WebSocketStream<TcpStream>, keepalive: u64) -> Result<
     let (mut write, read) = stream.split();
     let stay = read.try_for_each(|_message| async { Ok(()) });
 
-    let result = time::timeout(Duration::from_secs(keepalive), stay)
-        .await
-        .map_err(|_| Error::AliveTimeout);
-
+    let result = if keepalive == 0 {
+        Ok(stay.await)
+    } else {
+        time::timeout(Duration::from_secs(keepalive), stay)
+            .await
+            .map_err(|_| Error::AliveTimeout)
+    };
     if let Err(_) = result {
         write.close().await.map_err(|_| Error::AliveTimeout)?;
     }
