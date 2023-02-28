@@ -105,25 +105,31 @@ pub struct ConnectResult {
     pub alive: usize,
     /// num of connect error
     pub error: usize,
-    /// Lost connection by some error
+    /// num of lost connection by some error
     pub lost: usize,
     /// num of closed when alive timeout
     pub close: usize,
-    /// success connect times
+    /// time duration when connected
+    pub time: Duration,
+    /// success connect times result
     pub connect_time: TimeResult,
 }
 
 macro_rules! add1 {
-    ($name:ident, $attr:ident) => {{
+    ($name:ident, $($attr:ident) , *) => {{
         let mut r = $name.lock();
-        r.$attr += 1;
+        $(
+            r.$attr += 1;
+        )*
     }};
 }
 
 macro_rules! subtract1 {
-    ( $name:ident, $attr:ident) => {{
+    ($name:ident, $($attr:ident) , *) => {{
         let mut r = $name.lock();
-        r.$attr -= 1;
+        $(
+            r.$attr -= 1;
+        )*
     }};
 }
 
@@ -140,6 +146,7 @@ pub async fn start(opts: ConnectOpts) {
     tokio::spawn(async move {
         let interfaces = opts.interface.unwrap_or_default();
         let len = interfaces.len();
+        let start_time = time::Instant::now();
         for i in 0..opts.count {
             let url = opts.url.clone();
             let result = c_result.clone();
@@ -152,6 +159,10 @@ pub async fn start(opts: ConnectOpts) {
                 add1!(result, connect);
                 let now = time::Instant::now();
                 let res = connect(url, interface, connaddr).await;
+                {
+                    let mut r = result.lock();
+                    r.time = start_time.elapsed();
+                }
                 match res {
                     Ok(stream) => {
                         {
