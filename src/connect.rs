@@ -237,7 +237,7 @@ pub async fn connect(
     Ok(stream)
 }
 
-/// Wait websocket finish
+/// Wait websocket close
 pub async fn wait(stream: WebSocketStream<TcpStream>, keepalive: u64) -> Result<(), Error> {
     let (mut write, read) = stream.split();
     let stay = read.try_for_each(|_message| async { Ok(()) });
