@@ -65,7 +65,7 @@ fn parse_interface(s: &str) -> Result<SocketAddr, String> {
 
 /// Bech time result
 #[derive(Default, Debug, Copy, Clone)]
-pub struct TimeResult {
+pub struct TimeStats {
     pub count: usize,
     pub total: Duration,
     pub avg: Duration,
@@ -73,7 +73,7 @@ pub struct TimeResult {
     pub max: Duration,
 }
 
-impl TimeResult {
+impl TimeStats {
     pub fn add(self, time: Duration) -> Self {
         let total = self.total + time;
         let min = if self.min.is_zero() {
@@ -94,7 +94,7 @@ impl TimeResult {
 /// Bench result
 
 #[derive(Default, Debug, Copy, Clone)]
-pub struct ConnectResult {
+pub struct ConnectStats {
     /// total
     pub total: usize,
     /// num of completed
@@ -112,7 +112,7 @@ pub struct ConnectResult {
     /// time duration when connected
     pub time: Duration,
     /// success connect times result
-    pub connect_time: TimeResult,
+    pub connect_time: TimeStats,
 }
 
 macro_rules! add1 {
@@ -137,7 +137,7 @@ macro_rules! subtract1 {
 pub async fn start(opts: ConnectOpts) {
     let connaddr = Some(parse_wsaddr(&opts.url).unwrap());
     println!("{:?}", opts);
-    let result = Arc::new(Mutex::new(ConnectResult {
+    let result = Arc::new(Mutex::new(ConnectStats {
         total: opts.count,
         ..Default::default()
     }));
