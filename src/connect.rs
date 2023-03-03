@@ -112,7 +112,7 @@ pub struct ConnectStats {
     /// time duration when connected
     pub time: Duration,
     /// success connect times result
-    pub connect_time: TimeStats,
+    pub success_time: TimeStats,
 }
 
 macro_rules! add1 {
@@ -168,7 +168,7 @@ pub async fn start(opts: ConnectOpts) {
                         {
                             let mut r = result.lock();
                             r.alive += 1;
-                            r.connect_time = r.connect_time.add(now.elapsed());
+                            r.success_time = r.success_time.add(now.elapsed());
                         }
                         let res = wait(stream, opts.keepalive).await;
                         subtract1!(result, alive);
