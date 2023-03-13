@@ -1,7 +1,10 @@
+use crate::util;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use parking_lot::Mutex;
+use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::net::SocketAddr;
+use std::ops::Deref;
 use std::sync::Arc;
 use tokio::{
     net::{TcpSocket, TcpStream},
@@ -55,16 +58,12 @@ pub struct ConnectOpts {
     pub threads: usize,
 
     /// Network interface address list
-    #[arg(short = 'i', long, value_name = "IP", value_parser = parse_interface)]
+    #[arg(short = 'i', long, value_name = "IP", value_parser = util::parse_interface)]
     pub interface: Option<Vec<SocketAddr>>,
 }
 
-fn parse_interface(s: &str) -> Result<SocketAddr, String> {
-    Ok(format!("{}:0", s).parse().map_err(|_| "error format")?)
-}
-
 /// Bech time result
-#[derive(Default, Debug, Copy, Clone)]
+#[derive(Default, Debug, Copy, Clone, Deserialize, Serialize)]
 pub struct TimeStats {
     pub count: usize,
     pub total: Duration,
@@ -93,7 +92,7 @@ impl TimeStats {
 
 /// Bench result
 
-#[derive(Default, Debug, Copy, Clone)]
+#[derive(Default, Debug, Copy, Clone, Deserialize, Serialize)]
 pub struct ConnectStats {
     /// total
     pub total: usize,
@@ -195,7 +194,11 @@ pub async fn start(opts: ConnectOpts) {
     loop {
         {
             let r = result.lock();
-            println!("elapsed: {}ms {:?}", now.elapsed().as_millis(), r);
+            println!(
+                "elapsed: {}ms {}",
+                now.elapsed().as_millis(),
+                serde_json::to_string(r.deref()).unwrap()
+            );
             if r.complete == r.total {
                 break;
             }

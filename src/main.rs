@@ -6,6 +6,7 @@ extern crate clap;
 
 mod connect;
 mod runtime;
+mod util;
 
 /// Cli
 #[derive(Debug, Parser)]
