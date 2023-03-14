@@ -7,9 +7,10 @@
 
 use std::env;
 
-use futures_util::{future, StreamExt, TryStreamExt};
-use log::{error, info};
+use futures_util::{SinkExt, StreamExt};
+use log::debug;
 use tokio::net::{TcpListener, TcpStream};
+use tokio_tungstenite::tungstenite::Message;
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
@@ -29,12 +30,12 @@ async fn main() -> Result<(), std::io::Error> {
                 tokio::spawn(async {
                     let res = accept_connection(stream).await;
                     if let Err(err) = res {
-                        error!("WebSocket error: {}", err);
+                        debug!("WebSocket error: {}", err);
                     }
                 });
             }
             Err(err) => {
-                error!("Tcp error: {}", err);
+                debug!("Tcp error: {}", err);
                 break;
             }
         }
@@ -44,21 +45,28 @@ async fn main() -> Result<(), std::io::Error> {
 
 async fn accept_connection(stream: TcpStream) -> Result<(), tokio_tungstenite::tungstenite::Error> {
     let addr = stream.peer_addr()?;
-    info!("Peer address: {}", addr);
+    debug!("Peer address: {}", addr);
 
     let ws_stream = tokio_tungstenite::accept_async(stream).await?;
 
-    info!("WebSocket connect: {}", addr);
+    debug!("WebSocket connect: {}", addr);
 
-    let (_write, read) = ws_stream.split();
+    let (mut write, mut read) = ws_stream.split();
     // Wait message
-    let res = read.try_for_each(|_| future::ready(Ok(()))).await;
-    match res {
-        Ok(_) => {
-            info!("WebSocket closed: {}", addr);
-        }
-        Err(err) => {
-            info!("WebSocket error: {} {}", addr, err);
+
+    loop {
+        let msg = read.next().await;
+        match msg {
+            Some(msg) => {
+                let msg = msg?;
+                if msg.is_text() {
+                    write.send(Message::Text(r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30", true, ""]"#.to_string())).await?;
+                } else if msg.is_close() {
+                    debug!("WebSocket closed: {}", addr);
+                    break;
+                }
+            }
+            None => break,
         }
     }
     Ok(())

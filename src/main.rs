@@ -1,10 +1,10 @@
 //! Nostr relay benchmarker
-
 use clap::Parser;
 #[macro_use]
 extern crate clap;
 
 mod connect;
+mod event;
 mod runtime;
 mod util;
 
@@ -26,6 +26,9 @@ enum Commands {
     /// Connection benchmark
     #[command(arg_required_else_help = true)]
     Connect(connect::ConnectOpts),
+    /// Event publish benchmark
+    #[command(arg_required_else_help = true)]
+    Event(event::EventOpts),
 }
 
 fn main() {
@@ -34,6 +37,10 @@ fn main() {
         Commands::Connect(opts) => {
             let rt = runtime::get_rt(opts.threads);
             rt.block_on(connect::start(opts.clone()));
+        }
+        Commands::Event(opts) => {
+            let rt = runtime::get_rt(opts.threads);
+            rt.block_on(event::start(opts.clone()));
         }
     }
 }

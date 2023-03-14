@@ -1,4 +1,3 @@
-use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use std::net::SocketAddr;
 use tokio::{
     net::{TcpSocket, TcpStream},
@@ -7,6 +6,26 @@ use tokio::{
 };
 use tokio_tungstenite::{client_async, tungstenite::Error as WsError, WebSocketStream};
 use url::Url;
+
+#[macro_export]
+macro_rules! add1 {
+    ($name:ident, $($attr:ident) , *) => {{
+        let mut r = $name.lock();
+        $(
+            r.$attr += 1;
+        )*
+    }};
+}
+
+#[macro_export]
+macro_rules! subtract1 {
+    ($name:ident, $($attr:ident) , *) => {{
+        let mut r = $name.lock();
+        $(
+            r.$attr -= 1;
+        )*
+    }};
+}
 
 /// Connection error
 #[derive(Debug, thiserror::Error)]
@@ -64,23 +83,4 @@ pub async fn connect(
         .await
         .map_err(|_| Error::ConnectTimeout)??;
     Ok(stream)
-}
-
-/// Wait websocket close
-pub async fn wait(stream: WebSocketStream<TcpStream>, keepalive: u64) -> Result<(), Error> {
-    let (mut write, read) = stream.split();
-    let stay = read.try_for_each(|_message| async { Ok(()) });
-
-    let result = if keepalive == 0 {
-        Ok(stay.await)
-    } else {
-        time::timeout(Duration::from_secs(keepalive), stay)
-            .await
-            .map_err(|_| Error::AliveTimeout)
-    };
-    if let Err(_) = result {
-        write.close().await.map_err(|_| Error::AliveTimeout)?;
-    }
-    result?.map_err(|_| Error::Lost)?;
-    Ok(())
 }

@@ -37,7 +37,9 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWebSocket {
             Ok(msg) => msg,
         };
         match msg {
-            ws::Message::Text(_text) => {}
+            ws::Message::Text(_text) => {
+                ctx.text(r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30", true, ""]"#);
+            }
             ws::Message::Ping(msg) => ctx.pong(&msg),
             ws::Message::Close(reason) => {
                 ctx.close(reason);
