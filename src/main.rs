@@ -39,14 +39,17 @@ fn main() {
     let args = Cli::parse();
     match args.command {
         Commands::Connect(opts) => {
+            println!("{:?}", opts);
             let rt = runtime::get_rt(opts.threads);
             rt.block_on(connect::start(opts.clone()));
         }
         Commands::Event(opts) => {
+            println!("{:?}", opts);
             let rt = runtime::get_rt(opts.threads);
             rt.block_on(event::start(opts.clone()));
         }
         Commands::Req(opts) => {
+            println!("{:?}", opts);
             let rt = runtime::get_rt(opts.threads);
             rt.block_on(req::start(opts.clone()));
         }

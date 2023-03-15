@@ -28,7 +28,7 @@ pub struct ReqOpts {
     pub rate: usize,
 
     /// Close connection after second, ignore when set to 0
-    #[arg(short = 'k', long, default_value = "600", value_name = "NUM")]
+    #[arg(short = 'k', long, default_value = "0", value_name = "NUM")]
     pub keepalive: u64,
 
     /// Set the amount of threads, default 0 will use all system available cores
@@ -43,7 +43,6 @@ pub struct ReqOpts {
 /// Start bench
 pub async fn start(opts: ReqOpts) {
     let connaddr = Some(parse_wsaddr(&opts.url).unwrap());
-    println!("{:?}", opts);
     let stats = Arc::new(Mutex::new(ConnectStats {
         total: opts.count,
         ..Default::default()
