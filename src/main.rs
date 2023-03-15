@@ -5,6 +5,7 @@ extern crate clap;
 
 mod connect;
 mod event;
+mod req;
 mod runtime;
 mod util;
 
@@ -26,9 +27,12 @@ enum Commands {
     /// Connection benchmark
     #[command(arg_required_else_help = true)]
     Connect(connect::ConnectOpts),
-    /// Event publish benchmark
+    /// Publish event benchmark
     #[command(arg_required_else_help = true)]
     Event(event::EventOpts),
+    /// Request event benchmark
+    #[command(arg_required_else_help = true)]
+    Req(req::ReqOpts),
 }
 
 fn main() {
@@ -41,6 +45,10 @@ fn main() {
         Commands::Event(opts) => {
             let rt = runtime::get_rt(opts.threads);
             rt.block_on(event::start(opts.clone()));
+        }
+        Commands::Req(opts) => {
+            let rt = runtime::get_rt(opts.threads);
+            rt.block_on(req::start(opts.clone()));
         }
     }
 }
