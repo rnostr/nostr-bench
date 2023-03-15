@@ -1,5 +1,5 @@
 use crate::connect::{ConnectStats, TimeStats};
-use crate::util::{connect, gen_note_event, parse_interface, parse_wsaddr, Error};
+use crate::util::{connect, gen_note_event, parse_interface, parse_wsaddr, timeout, Error};
 use crate::{add1, subtract1};
 use clap::Parser;
 use futures_util::{SinkExt, StreamExt};
@@ -98,7 +98,8 @@ pub async fn start(opts: EventOpts) {
                             r.alive += 1;
                             r.success_time = r.success_time.add(now.elapsed());
                         }
-                        let res = wait(stream, opts.keepalive, event_stats).await;
+
+                        let res = timeout(opts.keepalive, loop_message(stream, event_stats)).await;
                         subtract1!(stats, alive);
                         if let Err(Error::AliveTimeout) = res {
                             add1!(stats, close);
@@ -155,24 +156,6 @@ pub async fn start(opts: EventOpts) {
         }
         time::sleep(Duration::from_secs(2)).await;
     }
-}
-
-/// Wait websocket close
-pub async fn wait(
-    stream: WebSocketStream<TcpStream>,
-    keepalive: u64,
-    stats: Arc<Mutex<EventStats>>,
-) -> Result<(), Error> {
-    let stay = loop_message(stream, stats);
-    let result = if keepalive == 0 {
-        Ok(stay.await)
-    } else {
-        time::timeout(Duration::from_secs(keepalive), stay)
-            .await
-            .map_err(|_| Error::AliveTimeout)
-    };
-    result?.map_err(|_| Error::Lost)?;
-    Ok(())
 }
 
 /// Loop sent event

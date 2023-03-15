@@ -1,7 +1,7 @@
-use crate::util::{connect, parse_interface, parse_wsaddr, Error};
+use crate::util::{connect, parse_interface, parse_wsaddr, timeout, Error};
 use crate::{add1, subtract1};
 use clap::Parser;
-use futures_util::{SinkExt, StreamExt, TryStreamExt};
+use futures_util::{StreamExt, TryStreamExt};
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -130,7 +130,9 @@ pub async fn start(opts: ConnectOpts) {
                             r.alive += 1;
                             r.success_time = r.success_time.add(now.elapsed());
                         }
-                        let res = wait(stream, opts.keepalive).await;
+
+                        let res = timeout(opts.keepalive, wait(stream)).await;
+                        // let res = wait(stream, opts.keepalive).await;
                         subtract1!(stats, alive);
                         if let Err(Error::AliveTimeout) = res {
                             add1!(stats, close);
@@ -169,21 +171,8 @@ pub async fn start(opts: ConnectOpts) {
     }
 }
 
-/// Wait websocket close
-pub async fn wait(stream: WebSocketStream<TcpStream>, keepalive: u64) -> Result<(), Error> {
-    let (mut write, read) = stream.split();
-    let stay = read.try_for_each(|_message| async { Ok(()) });
-
-    let result = if keepalive == 0 {
-        Ok(stay.await)
-    } else {
-        time::timeout(Duration::from_secs(keepalive), stay)
-            .await
-            .map_err(|_| Error::AliveTimeout)
-    };
-    if let Err(_) = result {
-        write.close().await.map_err(|_| Error::AliveTimeout)?;
-    }
-    result?.map_err(|_| Error::Lost)?;
+async fn wait(stream: WebSocketStream<TcpStream>) -> Result<(), Error> {
+    let (_write, read) = stream.split();
+    read.try_for_each(|_message| async { Ok(()) }).await?;
     Ok(())
 }

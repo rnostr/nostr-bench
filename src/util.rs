@@ -1,3 +1,4 @@
+use futures_util::Future;
 use nostr::prelude::{rand, rand::Rng};
 use std::net::SocketAddr;
 use tokio::{
@@ -84,6 +85,22 @@ pub async fn connect(
         .await
         .map_err(|_| Error::ConnectTimeout)??;
     Ok(stream)
+}
+
+/// Timeout error
+pub async fn timeout<T: Future<Output = Result<(), Error>>>(
+    timeout: u64,
+    stay: T,
+) -> Result<(), Error> {
+    let result = if timeout == 0 {
+        Ok(stay.await)
+    } else {
+        time::timeout(Duration::from_secs(timeout), stay)
+            .await
+            .map_err(|_| Error::AliveTimeout)
+    };
+    result?.map_err(|_| Error::Lost)?;
+    Ok(())
 }
 
 /// Generate random hashtag between nostr-bench-0 to nostr-bench-1000

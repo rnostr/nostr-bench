@@ -60,7 +60,13 @@ async fn accept_connection(stream: TcpStream) -> Result<(), tokio_tungstenite::t
             Some(msg) => {
                 let msg = msg?;
                 if msg.is_text() {
-                    write.send(Message::Text(r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30", true, ""]"#.to_string())).await?;
+                    if msg.to_string().contains("EVENT") {
+                        write.send(Message::Text(r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30", true, ""]"#.to_string())).await?;
+                    } else if msg.to_string().contains("REQ") {
+                        write
+                            .send(Message::Text(r#"["EOSE", "sub"]"#.to_string()))
+                            .await?;
+                    }
                 } else if msg.is_close() {
                     debug!("WebSocket closed: {}", addr);
                     break;
