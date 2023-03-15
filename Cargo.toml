@@ -34,5 +34,5 @@ log = "0.4.17"
 name = "server"
 
 [[bench]]
-name = "event"
+name = "util"
 harness = false

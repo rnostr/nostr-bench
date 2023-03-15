@@ -1,9 +1,9 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use nostr_bench::event::demo_note;
+use nostr_bench::util::gen_note_event;
 
 fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("generate event", |b| {
-        b.iter(|| demo_note(black_box("demo")))
+        b.iter(|| gen_note_event(black_box("demo")))
     });
 }
 

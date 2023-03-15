@@ -1,5 +1,5 @@
 use crate::connect::{ConnectStats, TimeStats};
-use crate::util::{connect, parse_interface, parse_wsaddr, Error};
+use crate::util::{connect, gen_note_event, parse_interface, parse_wsaddr, Error};
 use crate::{add1, subtract1};
 use clap::Parser;
 use futures_util::{SinkExt, StreamExt};
@@ -11,7 +11,6 @@ use tokio::net::TcpStream;
 use tokio::{time, time::Duration};
 use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 use url::Url;
-
 const BENCH_CONTENT: &str = "This is a message from nostr-bench client";
 
 /// Event benchmark options
@@ -159,6 +158,7 @@ pub async fn start(opts: EventOpts) {
     }
 }
 
+/// Wait websocket close
 pub async fn wait(
     stream: WebSocketStream<TcpStream>,
     keepalive: u64,
@@ -176,13 +176,13 @@ pub async fn wait(
     Ok(())
 }
 
-/// Wait websocket close
+/// Loop sent event
 async fn loop_message(
     stream: WebSocketStream<TcpStream>,
     stats: Arc<Mutex<EventStats>>,
 ) -> Result<(), Error> {
     let (mut write, mut read) = stream.split();
-    let event = demo_note(BENCH_CONTENT);
+    let event = gen_note_event(BENCH_CONTENT);
     time::sleep(Duration::from_secs(1)).await;
     let mut start = time::Instant::now();
     add1!(stats, total);
@@ -204,7 +204,7 @@ async fn loop_message(
                         add1!(stats, error);
                     }
                     add1!(stats, complete, total);
-                    let event = demo_note(BENCH_CONTENT);
+                    let event = gen_note_event(BENCH_CONTENT);
                     // let event = "test".to_string();
                     start = time::Instant::now();
                     write.send(Message::Text(event)).await?;
@@ -216,12 +216,4 @@ async fn loop_message(
         }
     }
     Ok(())
-}
-
-pub fn demo_note<T: Into<String>>(content: T) -> String {
-    let key = nostr::Keys::generate();
-    let tags = vec![];
-    let builder = nostr::EventBuilder::new_text_note(content, &tags);
-    let event = builder.to_event(&key).unwrap();
-    nostr::ClientMessage::new_event(event).as_json()
 }
