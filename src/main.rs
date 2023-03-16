@@ -2,12 +2,7 @@
 use clap::Parser;
 #[macro_use]
 extern crate clap;
-
-mod connect;
-mod event;
-mod req;
-mod runtime;
-mod util;
+use nostr_bench::{connect, event, req, runtime};
 
 /// Cli
 #[derive(Debug, Parser)]
@@ -37,19 +32,17 @@ enum Commands {
 
 fn main() {
     let args = Cli::parse();
+    println!("{:?}", args);
     match args.command {
         Commands::Connect(opts) => {
-            println!("{:?}", opts);
             let rt = runtime::get_rt(opts.threads);
             rt.block_on(connect::start(opts.clone()));
         }
         Commands::Event(opts) => {
-            println!("{:?}", opts);
             let rt = runtime::get_rt(opts.threads);
             rt.block_on(event::start(opts.clone()));
         }
         Commands::Req(opts) => {
-            println!("{:?}", opts);
             let rt = runtime::get_rt(opts.threads);
             rt.block_on(req::start(opts.clone()));
         }

@@ -1,6 +1,5 @@
-use crate::connect::{ConnectStats, TimeStats};
-use crate::util::{connect, gen_note_event, parse_interface, parse_wsaddr, timeout, Error};
-use crate::{add1, subtract1};
+use crate::util::{gen_note_event, parse_interface};
+use crate::{add1, bench, BenchOpts, Error, TimeStats};
 use clap::Parser;
 use futures_util::{SinkExt, StreamExt};
 use parking_lot::Mutex;
@@ -56,77 +55,26 @@ pub struct EventStats {
 
 /// Start bench
 pub async fn start(opts: EventOpts) {
-    let connaddr = Some(parse_wsaddr(&opts.url).unwrap());
-    let stats = Arc::new(Mutex::new(ConnectStats {
-        total: opts.count,
-        ..Default::default()
-    }));
+    let opts = BenchOpts {
+        url: opts.url,
+        count: opts.count,
+        rate: opts.rate,
+        keepalive: opts.keepalive,
+        threads: opts.threads,
+        interface: opts.interface,
+    };
 
     let event_stats = Arc::new(Mutex::new(EventStats {
         total: 0,
         ..Default::default()
     }));
-
-    let c_stats = stats.clone();
-    let c_event_stats = event_stats.clone();
-
-    tokio::spawn(async move {
-        let interfaces = opts.interface.unwrap_or_default();
-        let len = interfaces.len();
-        let start_time = time::Instant::now();
-        for i in 0..opts.count {
-            let url = opts.url.clone();
-            let stats = c_stats.clone();
-            let event_stats = c_event_stats.clone();
-            let interface = if len > 0 {
-                Some(interfaces[i % len])
-            } else {
-                None
-            };
-            tokio::spawn(async move {
-                add1!(stats, connect);
-                let now = time::Instant::now();
-                let res = connect(url, interface, connaddr).await;
-                {
-                    let mut r = stats.lock();
-                    r.time = start_time.elapsed();
-                }
-                match res {
-                    Ok(stream) => {
-                        {
-                            let mut r = stats.lock();
-                            r.alive += 1;
-                            r.success_time = r.success_time.add(now.elapsed());
-                        }
-
-                        let res = timeout(opts.keepalive, loop_message(stream, event_stats)).await;
-                        subtract1!(stats, alive);
-                        if let Err(Error::AliveTimeout) = res {
-                            add1!(stats, close);
-                        } else {
-                            add1!(stats, lost);
-                        }
-                    }
-                    Err(_err) => {
-                        // println!("error {:?}", _err);
-                        add1!(stats, error);
-                    }
-                }
-                add1!(stats, complete);
-            });
-            if (i + 1) % opts.rate == 0 {
-                time::sleep(Duration::from_secs(1)).await;
-            }
-        }
-    });
-
-    let now = time::Instant::now();
     let mut last: usize = 0;
     let mut last_time = time::Instant::now();
-
-    loop {
-        {
-            let s = stats.lock();
+    let c_stats = event_stats.clone();
+    bench(
+        opts,
+        |stream| loop_message(stream, c_stats),
+        |now, r| {
             let event_s = event_stats.lock();
             let cur = event_s.complete - event_s.error - last;
             let tps = if last_time.elapsed().as_secs() > 1 {
@@ -145,17 +93,14 @@ pub async fn start(opts: EventOpts) {
                 "elapsed: {}ms tps: {}/s {:?}, {:?}",
                 now.elapsed().as_millis(),
                 tps as u64,
-                s,
+                r,
                 event_s,
             );
             last = event_s.complete - event_s.error;
             last_time = time::Instant::now();
-            if s.complete == s.total {
-                break;
-            }
-        }
-        time::sleep(Duration::from_secs(2)).await;
-    }
+        },
+    )
+    .await;
 }
 
 /// Loop sent event
