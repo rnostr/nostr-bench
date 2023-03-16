@@ -1,4 +1,7 @@
-use futures_util::Future;
+use futures_util::{
+    future::{join_all, select},
+    Future,
+};
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -141,19 +144,34 @@ pub async fn bench<F, Fut, P>(opts: BenchOpts, handler: F, mut printer: P)
 where
     F: FnOnce(WebSocketStream<TcpStream>) -> Fut + Send + Sync + Clone + 'static,
     Fut: Future<Output = Result<(), Error>> + Send + 'static,
-    P: FnMut(time::Instant, &ConnectStats),
+    P: FnMut(time::Instant, &ConnectStats) + Send + 'static,
 {
     let connaddr = Some(parse_wsaddr(&opts.url).unwrap());
     let stats = Arc::new(Mutex::new(ConnectStats {
         total: opts.count,
         ..Default::default()
     }));
-
     let c_stats = stats.clone();
-    tokio::spawn(async move {
+
+    let run_print = tokio::spawn(async move {
+        let now = time::Instant::now();
+        loop {
+            {
+                let r = stats.lock();
+                printer(now, r.deref());
+                if r.complete == r.total {
+                    break;
+                }
+            }
+            time::sleep(Duration::from_secs(2)).await;
+        }
+    });
+
+    let run_connect = tokio::spawn(async move {
         let interfaces = opts.interface.unwrap_or_default();
         let len = interfaces.len();
         let start_time = time::Instant::now();
+        let mut tasks = vec![];
         for i in 0..opts.count {
             let url = opts.url.clone();
             let stats = c_stats.clone();
@@ -163,7 +181,7 @@ where
                 None
             };
             let handler = handler.clone();
-            tokio::spawn(async move {
+            let task = tokio::spawn(async move {
                 add1!(stats, connect);
                 let now = time::Instant::now();
                 let res = connect(url, interface, connaddr).await;
@@ -194,23 +212,14 @@ where
                 }
                 add1!(stats, complete);
             });
+            tasks.push(task);
             if (i + 1) % opts.rate == 0 {
                 time::sleep(Duration::from_secs(1)).await;
             }
         }
+        join_all(tasks).await;
     });
-
-    let now = time::Instant::now();
-    loop {
-        {
-            let r = stats.lock();
-            printer(now, r.deref());
-            if r.complete == r.total {
-                break;
-            }
-        }
-        time::sleep(Duration::from_secs(2)).await;
-    }
+    select(run_print, run_connect).await;
 }
 
 /// Connect websocket server with bind interface address

@@ -60,7 +60,7 @@ pub async fn start(opts: ReqOpts) {
     bench(
         opts,
         |stream| loop_req(stream, c_stats),
-        |now, r| {
+        move |now, r| {
             let event_s = event_stats.lock();
             let cur = event_s.complete - event_s.error - last;
             let tps = if last_time.elapsed().as_secs() > 1 {
