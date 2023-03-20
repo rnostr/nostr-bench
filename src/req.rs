@@ -5,6 +5,7 @@ use clap::Parser;
 use futures_util::{SinkExt, StreamExt};
 use parking_lot::Mutex;
 use std::net::SocketAddr;
+use std::ops::Deref;
 use std::sync::Arc;
 use tokio::net::TcpStream;
 use tokio::{time, time::Duration};
@@ -37,11 +38,15 @@ pub struct ReqOpts {
     /// Network interface address list
     #[arg(short = 'i', long, value_name = "IP", value_parser = parse_interface)]
     pub interface: Option<Vec<SocketAddr>>,
+
+    /// Display stats information as json, time format as milli seconds
+    #[arg(long)]
+    pub json: bool,
 }
 
 /// Start bench
 pub async fn start(opts: ReqOpts) {
-    let opts = BenchOpts {
+    let bench_opts = BenchOpts {
         url: opts.url,
         count: opts.count,
         rate: opts.rate,
@@ -58,31 +63,45 @@ pub async fn start(opts: ReqOpts) {
     let mut last_time = time::Instant::now();
     let c_stats = event_stats.clone();
     bench(
-        opts,
+        bench_opts,
         |stream| loop_req(stream, c_stats),
-        move |now, r| {
-            let event_s = event_stats.lock();
-            let cur = event_s.complete - event_s.error - last;
+        move |now, stats| {
+            let st = event_stats.lock();
+            let cur = st.complete - st.error - last;
             let tps = if last_time.elapsed().as_secs() > 1 {
                 cur as f64 / last_time.elapsed().as_secs_f64()
             } else {
                 0.0
             };
-
-            // println!(
-            //     "elapsed: {}ms {}, {}",
-            //     now.elapsed().as_millis(),
-            //     serde_json::to_string(s.deref()).unwrap(),
-            //     serde_json::to_string(event_s.deref()).unwrap(),
-            // );
-            println!(
-                "elapsed: {}ms tps: {}/s {:?}, {:?}",
-                now.elapsed().as_millis(),
-                tps as u64,
-                r,
-                event_s,
-            );
-            last = event_s.complete - event_s.error;
+            let tps = tps as u64;
+            if opts.json {
+                let json = serde_json::json!({
+                    "elapsed": now.elapsed().as_millis(),
+                    "tps": tps,
+                    "connect_stats": stats,
+                    "event_stats": st.deref(),
+                });
+                println!("{}", serde_json::to_string(&json).unwrap());
+            } else {
+                let time = st.success_time;
+                let time = format!(
+                    "avg: {}ms max: {}ms min: {}ms",
+                    time.avg.as_millis(),
+                    time.max.as_millis(),
+                    time.min.as_millis(),
+                );
+                let message = format!(
+                    "tps: {}/s complate: {} error: {} time: [{}]",
+                    tps, st.complete, st.error, time,
+                );
+                println!(
+                    "elapsed: {}ms connections: {} message {}",
+                    now.elapsed().as_millis(),
+                    stats.alive,
+                    message,
+                );
+            }
+            last = st.complete - st.error;
             last_time = time::Instant::now();
         },
     )

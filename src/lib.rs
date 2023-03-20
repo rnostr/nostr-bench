@@ -4,7 +4,7 @@ use futures_util::{
 };
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
+use serde_with::{serde_as, DurationMilliSeconds};
 use std::cmp;
 use std::net::SocketAddr;
 use std::ops::Deref;
@@ -91,9 +91,14 @@ pub struct BenchOpts {
 #[derive(Default, Debug, Copy, Clone, Deserialize, Serialize)]
 pub struct TimeStats {
     pub count: usize,
+    /// total time, milli seconds in json format
+    #[serde_as(as = "DurationMilliSeconds")]
     pub total: Duration,
+    #[serde_as(as = "DurationMilliSeconds")]
     pub avg: Duration,
+    #[serde_as(as = "DurationMilliSeconds")]
     pub min: Duration,
+    #[serde_as(as = "DurationMilliSeconds")]
     pub max: Duration,
 }
 
@@ -116,7 +121,7 @@ impl TimeStats {
 }
 
 /// Connect stats
-
+#[serde_as]
 #[derive(Default, Debug, Copy, Clone, Deserialize, Serialize)]
 pub struct ConnectStats {
     /// total
@@ -134,6 +139,7 @@ pub struct ConnectStats {
     /// num of closed when alive timeout
     pub close: usize,
     /// time duration when connected
+    #[serde_as(as = "DurationMilliSeconds")]
     pub time: Duration,
     /// success connect times result
     pub success_time: TimeStats,

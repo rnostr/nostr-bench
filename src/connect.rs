@@ -32,10 +32,14 @@ pub struct ConnectOpts {
     /// Network interface address list
     #[arg(short = 'i', long, value_name = "IP", value_parser = parse_interface)]
     pub interface: Option<Vec<SocketAddr>>,
+
+    /// Display stats information as json, time format as milli seconds
+    #[arg(long)]
+    pub json: bool,
 }
 
 pub async fn start(opts: ConnectOpts) {
-    let opts = BenchOpts {
+    let bench_opts = BenchOpts {
         url: opts.url,
         count: opts.count,
         rate: opts.rate,
@@ -44,15 +48,31 @@ pub async fn start(opts: ConnectOpts) {
         interface: opts.interface,
     };
     bench(
-        opts,
+        bench_opts,
         |stream| wait(stream),
-        |now, r| {
-            // println!(
-            //     "elapsed: {}ms {}",
-            //     now.elapsed().as_millis(),
-            //     serde_json::to_value(r.deref()).unwrap(),
-            // );
-            println!("elapsed: {}ms {:?}", now.elapsed().as_millis(), r);
+        move |now, stats| {
+            if opts.json {
+                let json = serde_json::json!({
+                    "elapsed": now.elapsed().as_millis(),
+                    "connect_stats": stats,
+                });
+                println!("{}", serde_json::to_string(&json).unwrap());
+            } else {
+                let time = stats.success_time;
+                let time = format!(
+                    "avg: {}ms max: {}ms min: {}ms",
+                    time.avg.as_millis(),
+                    time.max.as_millis(),
+                    time.min.as_millis(),
+                );
+                println!(
+                    "elapsed: {}ms connections: {} error: {} connect time: [{}] ",
+                    now.elapsed().as_millis(),
+                    stats.alive,
+                    stats.error,
+                    time,
+                );
+            }
         },
     )
     .await;
