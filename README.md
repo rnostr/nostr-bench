@@ -1,4 +1,4 @@
-Nostr relay benchmaker (WIP)
+Nostr relay benchmaker
 ======================
 
 ```sh
@@ -6,8 +6,35 @@ Nostr relay benchmaker (WIP)
 cargo install nostr-bench
 nostr-bench --help
 
+# Usage: nostr-bench <COMMAND>
+# 
+# Commands:
+#   connect  Connection benchmark
+#   event    Publish event benchmark
+#   req      Request event benchmark
+#   help     Print this message or the help of the given subcommand(s)
+
 ```
 
+```sh
+
+nostr-bench connect --help
+
+# Usage: nostr-bench connect [OPTIONS] <URL>
+# 
+# Arguments:
+#   <URL>  Nostr relay host url
+# 
+# Options:
+#   -c, --count <NUM>      Max count of clients [default: 100]
+#   -r, --rate <NUM>       Start open connection rate every second [default: 50]
+#   -k, --keepalive <NUM>  Close connection after second, ignore when set to 0 [default: 0]
+#   -t, --threads <NUM>    Set the amount of threads, default 0 will use all system available cores [default: 0]
+#   -i, --interface <IP>   Network interface address list
+#       --json             Display stats information as json, time format as milli seconds
+#   -h, --help             Print help
+
+```
 
 Get more connections
 ----------------------
