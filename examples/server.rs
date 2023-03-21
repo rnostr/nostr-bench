@@ -85,6 +85,7 @@ async fn accept_connection(
                     if msg.contains("EVENT") {
                         write.send(Message::Text(r#"["OK", "b1a649ebe8b435ec71d3784793f3bbf4b93e64e17568a741aecd4c7ddeafce30", true, ""]"#.to_string())).await?;
                     } else if msg.contains("REQ") {
+                        write.send(Message::Text("[\"EVENT\",\"sub\",{\"content\":\"This is a message from nostr-bench client\",\"created_at\":1679398712,\"id\":\"7c3d4ede274a5ee7b4902ca0b1b0c66455668a726c3f13d0e4df98001d265ab2\",\"kind\":1,\"pubkey\":\"9995b312995668064f9418db06a99758e80d9b35e7a4e76cba899e5f7abc3614\",\"sig\":\"4de6d7457f6194122949f87fce5acaab37cef9867aca59980399dd0ab055a54f8cf22f277f3a91a6f5546c88e42c5abb87fac69839c64119b99cee679190a105\",\"tags\":[[\"p\",\"9995b312995668064f9418db06a99758e80d9b35e7a4e76cba899e5f7abc3614\"],[\"e\",\"378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7\"],[\"t\",\"nostr-bench-\"],[\"t\",\"nostr-bench-515\"]]}]".to_owned())).await?;
                         write
                             .send(Message::Text(r#"["EOSE", "sub"]"#.to_string()))
                             .await?;
