@@ -1,11 +1,10 @@
-use crate::event::EventStats;
+use crate::event::{bench_event, EventStats};
 use crate::util::{gen_close, gen_req, parse_interface};
-use crate::{add1, bench, BenchOpts, Error};
+use crate::{add1, BenchOpts, Error};
 use clap::Parser;
 use futures_util::{SinkExt, StreamExt};
 use parking_lot::Mutex;
 use std::net::SocketAddr;
-use std::ops::Deref;
 use std::sync::Arc;
 use tokio::net::TcpStream;
 use tokio::{time, time::Duration};
@@ -54,62 +53,20 @@ pub async fn start(opts: ReqOpts) {
         threads: opts.threads,
         interface: opts.interface,
     };
-
     let event_stats = Arc::new(Mutex::new(EventStats {
         total: 0,
         ..Default::default()
     }));
-    let mut last: usize = 0;
-    let mut last_time = time::Instant::now();
     let c_stats = event_stats.clone();
-    bench(
-        bench_opts,
-        |stream| loop_req(stream, c_stats),
-        move |now, stats| {
-            let st = event_stats.lock();
-            let cur = st.complete - st.error - last;
-            let tps = if last_time.elapsed().as_secs() > 1 {
-                cur as f64 / last_time.elapsed().as_secs_f64()
-            } else {
-                0.0
-            };
-            let tps = tps as u64;
-            if opts.json {
-                let json = serde_json::json!({
-                    "elapsed": now.elapsed().as_millis(),
-                    "tps": tps,
-                    "connect_stats": stats,
-                    "event_stats": st.deref(),
-                });
-                println!("{}", serde_json::to_string(&json).unwrap());
-            } else {
-                let time = st.success_time;
-                let time = format!(
-                    "avg: {}ms max: {}ms min: {}ms",
-                    time.avg.as_millis(),
-                    time.max.as_millis(),
-                    time.min.as_millis(),
-                );
-                let message = format!(
-                    "tps: {}/s complate: {} error: {} time: [{}]",
-                    tps, st.complete, st.error, time,
-                );
-                println!(
-                    "elapsed: {}ms connections: {} message {}",
-                    now.elapsed().as_millis(),
-                    stats.alive,
-                    message,
-                );
-            }
-            last = st.complete - st.error;
-            last_time = time::Instant::now();
-        },
-    )
+
+    bench_event(bench_opts, event_stats, opts.json, |stream| {
+        loop_req(stream, c_stats)
+    })
     .await;
 }
 
 /// Loop request event
-async fn loop_req(
+pub async fn loop_req(
     stream: WebSocketStream<TcpStream>,
     stats: Arc<Mutex<EventStats>>,
 ) -> Result<(), Error> {
@@ -128,7 +85,12 @@ async fn loop_req(
             Some(msg) => {
                 let msg = msg?;
                 if msg.is_text() {
+                    let req = gen_req(None, None);
                     let msg = msg.to_string();
+                    {
+                        let mut r = stats.lock();
+                        r.size += msg.len() + req.len();
+                    }
                     if msg.contains("EOSE") {
                         {
                             let mut r = stats.lock();
@@ -138,7 +100,7 @@ async fn loop_req(
                         write.send(Message::Text(gen_close(None))).await?;
                         start = time::Instant::now();
                         // send again
-                        write.send(Message::Text(gen_req(None, None))).await?;
+                        write.send(Message::Text(req)).await?;
                     }
                 } else if msg.is_close() {
                     break;
