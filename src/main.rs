@@ -2,7 +2,7 @@
 use clap::Parser;
 #[macro_use]
 extern crate clap;
-use nostr_bench::{connect, event, req, runtime};
+use nostr_bench::{connect, echo, event, req, runtime};
 
 /// Cli
 #[derive(Debug, Parser)]
@@ -19,13 +19,16 @@ struct Cli {
 /// Commands
 #[derive(Debug, Subcommand)]
 enum Commands {
-    /// Connection benchmark
+    /// Benchmark create websocket connections
     #[command(arg_required_else_help = true)]
     Connect(connect::ConnectOpts),
-    /// Publish event benchmark
+    /// Benchmark send websocket message, the server should send back the message
+    #[command(arg_required_else_help = true)]
+    Echo(echo::EchoOpts),
+    /// Benchmark publish nostr event
     #[command(arg_required_else_help = true)]
     Event(event::EventOpts),
-    /// Request event benchmark
+    /// Benchmark request nostr event
     #[command(arg_required_else_help = true)]
     Req(req::ReqOpts),
 }
@@ -37,6 +40,10 @@ fn main() {
         Commands::Connect(opts) => {
             let rt = runtime::get_rt(opts.threads);
             rt.block_on(connect::start(opts.clone()));
+        }
+        Commands::Echo(opts) => {
+            let rt = runtime::get_rt(opts.threads);
+            rt.block_on(echo::start(opts.clone()));
         }
         Commands::Event(opts) => {
             let rt = runtime::get_rt(opts.threads);

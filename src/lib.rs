@@ -21,6 +21,7 @@ use util::parse_wsaddr;
 pub mod connect;
 pub mod event;
 pub mod req;
+pub mod echo;
 pub mod runtime;
 pub mod util;
 

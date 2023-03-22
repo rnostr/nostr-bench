@@ -1,4 +1,8 @@
-use nostr::prelude::{rand, rand::Rng};
+use nostr::prelude::{
+    rand,
+    rand::distributions::{Alphanumeric, DistString},
+    rand::Rng,
+};
 use std::net::SocketAddr;
 use url::Url;
 
@@ -34,6 +38,7 @@ pub fn gen_req(id: Option<String>, tag: Option<String>) -> String {
     )
 }
 
+/// Generate close message
 pub fn gen_close(id: Option<String>) -> String {
     let id = id.unwrap_or("sub".to_owned());
     format!("[\"CLOSE\", \"{}\"]", id)
@@ -60,8 +65,14 @@ pub fn gen_note_event<T: Into<String>>(content: T) -> String {
     nostr::ClientMessage::new_event(event).as_json()
 }
 
+pub fn gen_string(size: usize) -> String {
+    Alphanumeric.sample_string(&mut rand::thread_rng(), size)
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::util::gen_string;
+
     use super::{gen_close, gen_req};
     #[test]
     fn generate() {
@@ -70,5 +81,6 @@ mod tests {
             r###"["REQ", "id", {"#t": ["tag"], "limit": 1}]"###
         );
         assert_eq!(gen_close(Some("id".to_owned())), r#"["CLOSE", "id"]"#);
+        assert_eq!(gen_string(10).len(), 10);
     }
 }
