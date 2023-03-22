@@ -1,6 +1,5 @@
-use crate::event::{bench_event, EventStats};
 use crate::util::{gen_close, gen_req, parse_interface};
-use crate::{add1, BenchOpts, Error};
+use crate::{add1, bench_message, BenchOpts, Error, MessageStats};
 use clap::Parser;
 use futures_util::{SinkExt, StreamExt};
 use parking_lot::Mutex;
@@ -53,13 +52,13 @@ pub async fn start(opts: ReqOpts) {
         threads: opts.threads,
         interface: opts.interface,
     };
-    let event_stats = Arc::new(Mutex::new(EventStats {
+    let event_stats = Arc::new(Mutex::new(MessageStats {
         total: 0,
         ..Default::default()
     }));
     let c_stats = event_stats.clone();
 
-    bench_event(bench_opts, event_stats, opts.json, |stream| {
+    bench_message(bench_opts, event_stats, opts.json, |stream| {
         loop_req(stream, c_stats)
     })
     .await;
@@ -68,7 +67,7 @@ pub async fn start(opts: ReqOpts) {
 /// Loop request event
 pub async fn loop_req(
     stream: WebSocketStream<TcpStream>,
-    stats: Arc<Mutex<EventStats>>,
+    stats: Arc<Mutex<MessageStats>>,
 ) -> Result<(), Error> {
     let (mut write, mut read) = stream.split();
     // wait connect success

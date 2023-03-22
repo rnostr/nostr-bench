@@ -145,6 +145,21 @@ pub struct ConnectStats {
     pub success_time: TimeStats,
 }
 
+/// Message stats
+#[derive(Default, Debug, Copy, Clone, Deserialize, Serialize)]
+pub struct MessageStats {
+    /// total event send
+    pub total: usize,
+    /// num of completed
+    pub complete: usize,
+    /// num of connect error
+    pub error: usize,
+    /// success event times stats
+    pub success_time: TimeStats,
+    /// message transfer size as bytes
+    pub size: usize,
+}
+
 /// Start bench
 pub async fn bench<F, Fut, P>(opts: BenchOpts, handler: F, mut printer: P)
 where
@@ -226,6 +241,73 @@ where
         join_all(tasks).await;
     });
     select(run_print, run_connect).await;
+}
+
+/// Start bench with message stats
+pub async fn bench_message<F, Fut>(
+    opts: BenchOpts,
+    stats: Arc<Mutex<MessageStats>>,
+    json: bool,
+    handler: F,
+) where
+    F: FnOnce(WebSocketStream<TcpStream>) -> Fut + Send + Sync + Clone + 'static,
+    Fut: core::future::Future<Output = Result<(), Error>> + Send + 'static,
+{
+    let mut last_count: usize = 0;
+    let mut last_size: usize = 0;
+    let mut last_time = time::Instant::now();
+    bench(opts, handler, move |now, cstats| {
+        let st = stats.lock();
+        let cur_count = st.complete - st.error - last_count;
+        let tps = if last_time.elapsed().as_secs() > 1 {
+            cur_count as f64 / last_time.elapsed().as_secs_f64()
+        } else {
+            0.0
+        };
+
+        let cur_size = st.size - last_size;
+        let size = if last_time.elapsed().as_secs() > 1 {
+            cur_size as f64 / last_time.elapsed().as_secs_f64()
+        } else {
+            0.0
+        };
+        let tps = tps as u64;
+        let size = (((size / 100000.0) as u64) as f64) / 10.0;
+
+        if json {
+            let json = serde_json::json!({
+                "elapsed": now.elapsed().as_millis(),
+                "last_elapsed": last_time.elapsed().as_millis(),
+                "tps": tps,
+                "size": size,
+                "connect_stats": cstats,
+                "message_stats": st.deref(),
+            });
+            println!("{}", serde_json::to_string(&json).unwrap());
+        } else {
+            let time = st.success_time;
+            let time = format!(
+                "avg: {}ms max: {}ms min: {}ms",
+                time.avg.as_millis(),
+                time.max.as_millis(),
+                time.min.as_millis(),
+            );
+            let message = format!(
+                "tps: {}/s transfer: {}MB/s complate: {} error: {} time: [{}]",
+                tps, size, st.complete, st.error, time,
+            );
+            println!(
+                "elapsed: {}ms connections: {} message {}",
+                now.elapsed().as_millis(),
+                cstats.alive,
+                message,
+            );
+        }
+        last_count = st.complete - st.error;
+        last_size = st.size;
+        last_time = time::Instant::now();
+    })
+    .await;
 }
 
 /// Connect websocket server with bind interface address
