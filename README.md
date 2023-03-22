@@ -9,9 +9,10 @@ nostr-bench --help
 # Usage: nostr-bench <COMMAND>
 # 
 # Commands:
-#   connect  Connection benchmark
-#   event    Publish event benchmark
-#   req      Request event benchmark
+#   connect  Benchmark create websocket connections
+#   echo     Benchmark send websocket message, the server should send back the message
+#   event    Benchmark publish nostr event
+#   req      Benchmark request nostr event
 #   help     Print this message or the help of the given subcommand(s)
 
 ```
