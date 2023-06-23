@@ -37,6 +37,10 @@ pub struct ReqOpts {
     #[arg(short = 'i', long, value_name = "IP", value_parser = parse_interface)]
     pub interface: Option<Vec<SocketAddr>>,
 
+    /// Request filter limit
+    #[arg(long, default_value = "1", value_name = "NUM")]
+    pub limit: usize,
+
     /// Display stats information as json, time format as milli seconds
     #[arg(long)]
     pub json: bool,
@@ -57,9 +61,10 @@ pub async fn start(opts: ReqOpts) {
         ..Default::default()
     }));
     let c_stats = event_stats.clone();
+    let limit = opts.limit;
 
-    bench_message(bench_opts, event_stats, opts.json, |stream| {
-        loop_req(stream, c_stats)
+    bench_message(bench_opts, event_stats, opts.json, move |stream| {
+        loop_req(stream, c_stats, limit)
     })
     .await;
 }
@@ -68,13 +73,14 @@ pub async fn start(opts: ReqOpts) {
 pub async fn loop_req(
     stream: WebSocketStream<TcpStream>,
     stats: Arc<Mutex<MessageStats>>,
+    limit: usize,
 ) -> Result<(), Error> {
     let (mut write, mut read) = stream.split();
     // wait connect success
     time::sleep(Duration::from_secs(1)).await;
     let mut start = time::Instant::now();
     add1!(stats, total);
-    let req = gen_req(None, None);
+    let req = gen_req(None, None, limit);
     // println!("req {}", req);
     write.send(Message::Text(req)).await?;
     loop {
@@ -84,11 +90,14 @@ pub async fn loop_req(
             Some(msg) => {
                 let msg = msg?;
                 if msg.is_text() {
-                    let req = gen_req(None, None);
+                    let req = gen_req(None, None, limit);
                     let msg = msg.to_string();
                     {
                         let mut r = stats.lock();
                         r.size += msg.len() + req.len();
+                    }
+                    if msg.contains("EVENT") {
+                        add1!(stats, event);
                     }
                     if msg.contains("EOSE") {
                         {

@@ -19,9 +19,9 @@ use url::Url;
 use util::parse_wsaddr;
 
 pub mod connect;
+pub mod echo;
 pub mod event;
 pub mod req;
-pub mod echo;
 pub mod runtime;
 pub mod util;
 
@@ -159,6 +159,8 @@ pub struct MessageStats {
     pub success_time: TimeStats,
     /// message transfer size as bytes
     pub size: usize,
+    /// total event received
+    pub event: usize,
 }
 
 /// Start bench
@@ -294,8 +296,8 @@ pub async fn bench_message<F, Fut>(
                 time.min.as_millis(),
             );
             let message = format!(
-                "tps: {}/s transfer: {}MB/s complate: {} error: {} time: [{}]",
-                tps, size, st.complete, st.error, time,
+                "tps: {}/s transfer: {}MB/s complate: {} event: {} error: {} time: [{}]",
+                tps, size, st.complete, st.event, st.error, time,
             );
             println!(
                 "elapsed: {}ms connections: {} message {}",

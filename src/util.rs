@@ -29,12 +29,12 @@ pub fn gen_hashtag() -> String {
 }
 
 /// Generate request
-pub fn gen_req(id: Option<String>, tag: Option<String>) -> String {
+pub fn gen_req(id: Option<String>, tag: Option<String>, limit: usize) -> String {
     let id = id.unwrap_or("sub".to_owned());
     let tag = tag.unwrap_or_else(|| gen_hashtag());
     format!(
-        "[\"REQ\", \"{}\", {{\"#t\": [\"{}\"], \"limit\": 1}}]",
-        id, tag
+        "[\"REQ\", \"{}\", {{\"#t\": [\"{}\"], \"limit\": {}}}]",
+        id, tag, limit
     )
 }
 
@@ -77,7 +77,7 @@ mod tests {
     #[test]
     fn generate() {
         assert_eq!(
-            gen_req(Some("id".to_owned()), Some("tag".to_owned())),
+            gen_req(Some("id".to_owned()), Some("tag".to_owned()), 1),
             r###"["REQ", "id", {"#t": ["tag"], "limit": 1}]"###
         );
         assert_eq!(gen_close(Some("id".to_owned())), r#"["CLOSE", "id"]"#);

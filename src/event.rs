@@ -99,7 +99,7 @@ pub async fn loop_event(
                         // println!("message error {:?}", msg);
                         add1!(stats, error);
                     }
-                    add1!(stats, complete, total);
+                    add1!(stats, complete, total, event);
                     // let event = "test".to_string();
                     start = time::Instant::now();
                     write.send(Message::Text(event)).await?;
