@@ -3,6 +3,7 @@ use crate::{add1, bench_message, BenchOpts, Error, MessageStats};
 use clap::Parser;
 use futures_util::{SinkExt, StreamExt};
 use parking_lot::Mutex;
+use tokio_tungstenite::MaybeTlsStream;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpStream;
@@ -73,7 +74,7 @@ pub async fn start(opts: EchoOpts) {
 
 /// Loop send message
 async fn loop_message(
-    stream: WebSocketStream<TcpStream>,
+    stream: WebSocketStream<MaybeTlsStream<TcpStream>>,
     stats: Arc<Mutex<MessageStats>>,
     message: String,
 ) -> Result<(), Error> {

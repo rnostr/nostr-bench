@@ -3,6 +3,7 @@ use crate::{add1, bench_message, BenchOpts, Error, MessageStats};
 use clap::Parser;
 use futures_util::{SinkExt, StreamExt};
 use parking_lot::Mutex;
+use tokio_tungstenite::MaybeTlsStream;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpStream;
@@ -69,7 +70,7 @@ pub async fn start(opts: EventOpts) {
 
 /// Loop send event
 pub async fn loop_event(
-    stream: WebSocketStream<TcpStream>,
+    stream: WebSocketStream<MaybeTlsStream<TcpStream>>,
     stats: Arc<Mutex<MessageStats>>,
 ) -> Result<(), Error> {
     let (mut write, mut read) = stream.split();

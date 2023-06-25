@@ -3,7 +3,7 @@ use clap::Parser;
 use futures_util::{StreamExt, TryStreamExt};
 use std::net::SocketAddr;
 use tokio::net::TcpStream;
-use tokio_tungstenite::WebSocketStream;
+use tokio_tungstenite::{WebSocketStream, MaybeTlsStream};
 use url::Url;
 
 /// Connection options
@@ -78,7 +78,7 @@ pub async fn start(opts: ConnectOpts) {
     .await;
 }
 
-async fn wait(stream: WebSocketStream<TcpStream>) -> Result<(), Error> {
+async fn wait(stream: WebSocketStream<MaybeTlsStream<TcpStream>>) -> Result<(), Error> {
     let (_write, read) = stream.split();
     read.try_for_each(|_message| async { Ok(()) }).await?;
     Ok(())

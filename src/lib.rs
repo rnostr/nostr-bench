@@ -14,7 +14,9 @@ use tokio::{
     time,
     time::Duration,
 };
-use tokio_tungstenite::{client_async, tungstenite::Error as WsError, WebSocketStream};
+use tokio_tungstenite::{
+    client_async_tls, tungstenite::Error as WsError, MaybeTlsStream, WebSocketStream,
+};
 use url::Url;
 use util::parse_wsaddr;
 
@@ -166,7 +168,7 @@ pub struct MessageStats {
 /// Start bench
 pub async fn bench<F, Fut, P>(opts: BenchOpts, handler: F, mut printer: P)
 where
-    F: FnOnce(WebSocketStream<TcpStream>) -> Fut + Send + Sync + Clone + 'static,
+    F: FnOnce(WebSocketStream<MaybeTlsStream<TcpStream>>) -> Fut + Send + Sync + Clone + 'static,
     Fut: Future<Output = Result<(), Error>> + Send + 'static,
     P: FnMut(time::Instant, &ConnectStats) + Send + 'static,
 {
@@ -253,7 +255,7 @@ pub async fn bench_message<F, Fut>(
     json: bool,
     handler: F,
 ) where
-    F: FnOnce(WebSocketStream<TcpStream>) -> Fut + Send + Sync + Clone + 'static,
+    F: FnOnce(WebSocketStream<MaybeTlsStream<TcpStream>>) -> Fut + Send + Sync + Clone + 'static,
     Fut: core::future::Future<Output = Result<(), Error>> + Send + 'static,
 {
     let mut last_count: usize = 0;
@@ -318,7 +320,7 @@ pub async fn connect(
     url: Url,
     interface: Option<SocketAddr>,
     connaddr: Option<SocketAddr>,
-) -> Result<WebSocketStream<TcpStream>, Error> {
+) -> Result<WebSocketStream<MaybeTlsStream<TcpStream>>, Error> {
     let connaddr = match connaddr {
         Some(addr) => addr,
         None => parse_wsaddr(&url)?,
@@ -328,10 +330,9 @@ pub async fn connect(
     if let Some(addr) = interface {
         socket.bind(addr)?;
     }
-
     let tcp = socket.connect(connaddr).await?;
 
-    let (stream, _) = time::timeout(Duration::from_secs(60), client_async(url, tcp))
+    let (stream, _) = time::timeout(Duration::from_secs(60), client_async_tls(url, tcp))
         .await
         .map_err(|_| Error::ConnectTimeout)??;
     Ok(stream)
