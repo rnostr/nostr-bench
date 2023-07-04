@@ -1,11 +1,11 @@
 [package]
 name = "nostr-bench"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 description = "Nostr relay benchmarking tool."
 license = "MIT"
-homepage = "https://github.com/arronzhang/nostr-bench"
-repository = "https://github.com/arronzhang/nostr-bench.git"
+homepage = "https://github.com/rnostr/nostr-bench"
+repository = "https://github.com/rnostr/nostr-bench.git"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -18,8 +18,16 @@ serde = { version = "1.0.155", features = ["derive"] }
 serde_json = "1.0.94"
 serde_with = "2.3.1"
 thiserror = "1.0.38"
-tokio = { version = "1.25.0", features = ["rt", "rt-multi-thread", "net", "time", "macros"] }
-tokio-tungstenite = { version = "0.18.0", features = ["rustls-tls-webpki-roots"] }
+tokio = { version = "1.25.0", features = [
+    "rt",
+    "rt-multi-thread",
+    "net",
+    "time",
+    "macros",
+] }
+tokio-tungstenite = { version = "0.18.0", features = [
+    "rustls-tls-webpki-roots",
+] }
 url = "2.3.1"
 
 [dev-dependencies]
